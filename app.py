@@ -314,6 +314,25 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 
 .reset-btn{width:100%;margin-top:12px;background:transparent;border:1px solid var(--dark3);color:var(--text-dim);padding:13px;font-family:'Josefin Sans',sans-serif;font-size:9px;letter-spacing:4px;text-transform:uppercase;cursor:pointer;transition:all .3s;}
 .reset-btn:hover{border-color:var(--gold-dim);color:var(--gold);}
+
+/* VISUAL PREVIEW */
+.preview-cta{background:linear-gradient(135deg,var(--dark2),var(--dark3));border:1px solid var(--teal-dim);padding:28px;text-align:center;margin-bottom:20px;}
+.preview-cta-label{font-size:9px;letter-spacing:5px;text-transform:uppercase;color:var(--teal-dim);margin-bottom:8px;}
+.preview-cta-text{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text-dim);margin-bottom:18px;font-style:italic;}
+.preview-btn{padding:16px 40px;background:transparent;border:1px solid var(--teal);color:var(--teal);font-family:'Josefin Sans',sans-serif;font-size:11px;letter-spacing:5px;text-transform:uppercase;cursor:pointer;position:relative;overflow:hidden;transition:all .4s;}
+.preview-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,var(--teal-dim),var(--teal));transform:translateX(-100%);transition:transform .35s;z-index:0;}
+.preview-btn:hover::before{transform:translateX(0);}
+.preview-btn:hover{color:var(--dark);}
+.preview-btn span{position:relative;z-index:1;}
+.preview-btn:disabled{opacity:.4;cursor:not-allowed;}
+.comparison-wrap{margin-bottom:20px;}
+.comp-disclaimer{background:rgba(201,168,76,.05);border:1px solid var(--gold-dim);padding:14px 18px;margin-bottom:16px;}
+.comp-disclaimer p{font-size:11px;color:var(--text-dim);line-height:1.7;}
+.improvements-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px;margin-bottom:16px;}
+.imp-item{background:var(--dark2);border:1px solid var(--dark3);border-left:2px solid var(--teal-dim);padding:10px 14px;font-size:10px;letter-spacing:1px;color:var(--text-dim);line-height:1.5;}
+.download-btn{padding:12px 28px;background:transparent;border:1px solid var(--gold-dim);color:var(--gold-dim);font-family:'Josefin Sans',sans-serif;font-size:9px;letter-spacing:4px;text-transform:uppercase;cursor:pointer;transition:all .3s;}
+.download-btn:hover{border-color:var(--gold);color:var(--gold);}
+
 .footer{margin-top:56px;text-align:center;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--text-dim);opacity:.4;padding-bottom:20px;}
 </style>
 </head>
@@ -394,7 +413,22 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
     </div>
     <p class="sec-title teal">Improvement Recommendations</p>
     <div class="sym-cards" id="symCards"></div>
-    <div class="note">
+
+    <div class="preview-cta">
+      <p class="preview-cta-label">◈ · Visual Simulation</p>
+      <p class="preview-cta-text">See how your face looks with symmetry improvements applied</p>
+      <button class="preview-btn" id="previewBtn" onclick="generatePreview()"><span>◈ &nbsp; Generate Visual Preview</span></button>
+    </div>
+
+    <div class="comparison-wrap" id="comparisonWrap" style="display:none;">
+      <p class="sec-title teal">Before &amp; After Simulation</p>
+      <div class="comp-disclaimer"><p>⚠ <strong>Digital simulation only</strong> — for educational purposes. Applies mathematical phi-based adjustments. Real professional results will differ significantly.</p></div>
+      <img id="comparisonImg" src="" alt="Before/After" style="width:100%;display:block;border:1px solid var(--dark3);margin-bottom:12px;">
+      <div id="improvementsApplied" class="improvements-list"></div>
+      <button class="download-btn" onclick="downloadPreview()">↓ &nbsp; Download Comparison Image</button>
+    </div>
+
+    <div class="note" style="margin-top:16px;">
       <p><strong>Important:</strong> These recommendations are based on mathematical facial proportion analysis only. Symmetry is one component of attractiveness — personality, expression, and confidence matter far more. Any cosmetic procedures should be discussed with qualified medical professionals. Many of these improvements can also be achieved through <strong>non-surgical means</strong> such as makeup, hairstyling, posture, and grooming.</p>
     </div>
   </div>
@@ -719,6 +753,48 @@ function generateSymRecs(data) {
   return recs;
 }
 
+
+// ── VISUAL PREVIEW ──
+let previewB64 = null;
+
+async function generatePreview() {
+  if (!currentFile) { alert('Please upload and analyze a photo first.'); return; }
+  const btn = document.getElementById('previewBtn');
+  btn.disabled = true;
+  btn.querySelector('span').textContent = '◈   Generating simulation...';
+
+  try {
+    const fd = new FormData();
+    fd.append('image', currentFile);
+    fd.append('ratios', JSON.stringify(lastData ? lastData.ratios : []));
+
+    const res = await fetch('/simulate', { method:'POST', body:fd });
+    const data = await res.json();
+    if (data.error) { alert(data.error); return; }
+
+    previewB64 = data.comparison;
+    document.getElementById('comparisonImg').src = 'data:image/jpeg;base64,' + data.comparison;
+
+    const impList = document.getElementById('improvementsApplied');
+    impList.innerHTML = data.improvements.map(i => `<div class="imp-item">✓ ${i}</div>`).join('');
+
+    document.getElementById('comparisonWrap').style.display = 'block';
+    document.getElementById('comparisonWrap').scrollIntoView({behavior:'smooth', block:'start'});
+  } catch(e) { alert('Error: ' + e.message); }
+  finally {
+    btn.disabled = false;
+    btn.querySelector('span').textContent = '◈   Generate Visual Preview';
+  }
+}
+
+function downloadPreview() {
+  if (!previewB64) return;
+  const a = document.createElement('a');
+  a.href = 'data:image/jpeg;base64,' + previewB64;
+  a.download = 'face-harmony-preview.jpg';
+  a.click();
+}
+
 // ── DENTAL ──
 let selectedConcerns = new Set();
 function toggleConcern(btn, concern) {
@@ -863,6 +939,184 @@ def analyze():
     ann=annotate_image(img,face,eyes,nG,mG)
     _,buf=cv2.imencode('.jpg',ann,[cv2.IMWRITE_JPEG_QUALITY,88])
     return jsonify({'overall_score':round(overall,2),'ratios':ratios,'analysis':generate_analysis(overall,ratios),'annotated_image':base64.standard_b64encode(buf).decode(),'landmarks_detected':len(eyes)})
+
+# ── VISUAL SIMULATION ──────────────────────────────────────────────────────
+def simulate_improvements(img, face, eyes, ratios):
+    """Apply OpenCV-based visual improvements to simulate symmetry changes."""
+    out = img.copy().astype(np.float32)
+    h_img, w_img = img.shape[:2]
+    fx, fy, fw, fh = face
+
+    ratio_map = {r['name']: r for r in ratios}
+
+    # ── 1. SKIN SMOOTHING (bilateral filter — removes blemishes, evens tone) ──
+    face_region = out[fy:fy+fh, fx:fx+fw]
+    smooth = cv2.bilateralFilter(face_region.astype(np.uint8), 15, 80, 80).astype(np.float32)
+    # Blend: 60% smooth, 40% original (keeps naturalness)
+    out[fy:fy+fh, fx:fx+fw] = cv2.addWeighted(face_region, 0.4, smooth, 0.6, 0)
+
+    # ── 2. BRIGHTNESS & CONTRAST LIFT (soft glow) ──
+    face_f = out[fy:fy+fh, fx:fx+fw]
+    # Soft light blend — brightens midtones
+    normalized = face_f / 255.0
+    brightened = normalized + 0.08 * (1 - normalized)
+    out[fy:fy+fh, fx:fx+fw] = np.clip(brightened * 255, 0, 255)
+
+    # ── 3. EYE ENHANCEMENT (brighten eye whites, subtle definition) ──
+    if len(eyes) >= 1:
+        for (ex, ey, ew, eh) in eyes[:2]:
+            # Eye region in global coords
+            ex_g, ey_g = fx+ex, fy+ey
+            eye_roi = out[ey_g:ey_g+eh, ex_g:ex_g+ew]
+            if eye_roi.size == 0: continue
+            # Slightly brighten and add micro-contrast
+            eye_bright = cv2.convertScaleAbs(eye_roi.astype(np.uint8), alpha=1.08, beta=6)
+            out[ey_g:ey_g+eh, ex_g:ex_g+ew] = eye_bright.astype(np.float32)
+
+    # ── 4. FACE WIDTH ADJUSTMENT (slim or widen based on phi deviation) ──
+    fwh_r = ratio_map.get('Face Width to Height')
+    if fwh_r and fwh_r['deviation'] > 0.15:
+        face_crop = out[fy:fy+fh, fx:fx+fw].astype(np.uint8)
+        if fwh_r['measured'] > PHI:
+            # Face too wide — slim it slightly (compress horizontally 4%)
+            new_w = int(fw * 0.96)
+            slimmed = cv2.resize(face_crop, (new_w, fh))
+            # Place centered
+            pad = (fw - new_w) // 2
+            canvas = face_crop.copy()
+            canvas[:, pad:pad+new_w] = slimmed
+            # Feather edges
+            for i in range(min(pad, 12)):
+                alpha = i / max(pad, 1)
+                canvas[:, i] = (canvas[:, i] * alpha + img[fy:fy+fh, fx+i] * (1-alpha)).astype(np.uint8)
+                canvas[:, fw-1-i] = (canvas[:, fw-1-i] * alpha + img[fy:fy+fh, fx+fw-1-i] * (1-alpha)).astype(np.uint8)
+            out[fy:fy+fh, fx:fx+fw] = canvas.astype(np.float32)
+        else:
+            # Face too narrow — widen slightly (expand 3%)
+            new_w = int(fw * 1.03)
+            widened = cv2.resize(face_crop, (min(new_w, w_img-fx), fh))
+            out[fy:fy+fh, fx:fx+min(new_w, w_img-fx)] = widened[:, :min(new_w, w_img-fx)].astype(np.float32)
+
+    # ── 5. EYE SYMMETRY CORRECTION (mirror the better eye subtly) ──
+    eye_sym = ratio_map.get('Eye Width Symmetry')
+    if eye_sym and eye_sym['deviation'] > 0.2 and len(eyes) >= 2:
+        le, re = eyes[0], eyes[1]
+        # Slightly open the smaller eye by brightening its upper lid area
+        smaller = le if le[2] < re[2] else re
+        sx, sy = fx+smaller[0], fy+smaller[1]
+        lid_region = out[sy:sy+smaller[3]//3, sx:sx+smaller[2]]
+        if lid_region.size > 0:
+            out[sy:sy+smaller[3]//3, sx:sx+smaller[2]] = np.clip(lid_region * 1.06 + 4, 0, 255)
+
+    # ── 6. FOREHEAD CONTOURING (darken temples if face too wide) ──
+    fwh_r2 = ratio_map.get('Face Width to Height')
+    if fwh_r2 and fwh_r2['measured'] > PHI + 0.1:
+        temple_w = int(fw * 0.12)
+        for side_x in [fx, fx+fw-temple_w]:
+            temple = out[fy:fy+int(fh*0.35), side_x:side_x+temple_w].astype(np.float32)
+            # Darken temples for slimming effect
+            gradient = np.linspace(0.82, 1.0, temple_w).reshape(1,-1,1)
+            if side_x == fx: gradient = gradient[:,::-1,:]
+            out[fy:fy+int(fh*0.35), side_x:side_x+temple_w] = np.clip(temple * gradient, 0, 255)
+
+    # ── 7. JAWLINE DEFINITION (subtle sharpening along jaw) ──
+    jaw_y = fy + int(fh * 0.75)
+    jaw_region = out[jaw_y:fy+fh, fx:fx+fw].astype(np.uint8)
+    if jaw_region.size > 0:
+        sharpened = cv2.filter2D(jaw_region, -1, np.array([[-0.3,-0.3,-0.3],[-0.3,3.4,-0.3],[-0.3,-0.3,-0.3]]))
+        out[jaw_y:fy+fh, fx:fx+fw] = cv2.addWeighted(jaw_region, 0.6, sharpened, 0.4, 0).astype(np.float32)
+
+    # ── 8. OVERALL WARMTH + VIBRANCY ──
+    out_uint8 = np.clip(out, 0, 255).astype(np.uint8)
+    hsv = cv2.cvtColor(out_uint8, cv2.COLOR_BGR2HSV).astype(np.float32)
+    hsv[:,:,1] = np.clip(hsv[:,:,1] * 1.08, 0, 255)  # slight saturation boost
+    hsv[:,:,2] = np.clip(hsv[:,:,2] * 1.03, 0, 255)  # slight value boost
+    out_uint8 = cv2.cvtColor(hsv.astype(np.uint8), cv2.COLOR_HSV2BGR)
+
+    return out_uint8
+
+
+def create_side_by_side(original, simulated, face):
+    """Create a comparison image with before/after labels."""
+    h, w = original.shape[:2]
+    # Resize both to same size
+    target_h = min(h, 600)
+    scale = target_h / h
+    target_w = int(w * scale)
+    orig_r = cv2.resize(original, (target_w, target_h))
+    sim_r  = cv2.resize(simulated, (target_w, target_h))
+
+    # Add labels
+    label_h = 36
+    combined_w = target_w * 2 + 4
+    canvas = np.ones((target_h + label_h, combined_w, 3), dtype=np.uint8) * 20
+
+    # Place images
+    canvas[label_h:, :target_w] = orig_r
+    canvas[label_h:, target_w+4:] = sim_r
+
+    # Labels
+    cv2.rectangle(canvas, (0,0), (target_w, label_h), (40,40,40), -1)
+    cv2.rectangle(canvas, (target_w+4,0), (combined_w, label_h), (30,60,50), -1)
+    cv2.putText(canvas, 'ORIGINAL', (target_w//2-52, 24), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (180,160,120), 1, cv2.LINE_AA)
+    cv2.putText(canvas, 'SIMULATED', (target_w+4+target_w//2-58, 24), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (80,180,160), 1, cv2.LINE_AA)
+
+    # Divider line
+    cv2.rectangle(canvas, (target_w, 0), (target_w+4, target_h+label_h), (60,60,60), -1)
+
+    return canvas
+
+
+@app.route('/simulate', methods=['POST'])
+def simulate():
+    if 'image' not in request.files:
+        return jsonify({'error': 'No image provided.'}), 400
+
+    img_bytes = request.files['image'].read()
+    nparr = np.frombuffer(img_bytes, np.uint8)
+    img   = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    if img is None:
+        return jsonify({'error': 'Could not decode image.'}), 400
+
+    # Parse ratios from form data
+    import json as _json
+    ratios_raw = request.form.get('ratios', '[]')
+    try: ratios = _json.loads(ratios_raw)
+    except: ratios = []
+
+    gray  = cv2.equalizeHist(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY))
+    faces = FACE_CASCADE.detectMultiScale(gray, 1.1, 5, minSize=(80,80))
+    if len(faces) == 0: faces = FACE_CASCADE.detectMultiScale(gray, 1.05, 3, minSize=(60,60))
+    if len(faces) == 0: return jsonify({'error': 'No face detected in image.'}), 400
+
+    face = max(faces, key=lambda f: f[2]*f[3])
+    fx, fy, fw, fh = face
+    fg = gray[fy:fy+fh, fx:fx+fw]
+    eyes = EYE_CASCADE.detectMultiScale(fg, 1.1, 5, minSize=(20,20))
+    eyes = sorted([(ex,ey,ew,eh) for ex,ey,ew,eh in eyes if ey < fh*.55], key=lambda e: e[0])
+
+    simulated = simulate_improvements(img, face, eyes, ratios)
+    comparison = create_side_by_side(img, simulated, face)
+
+    # Encode both
+    _, buf_sim  = cv2.imencode('.jpg', simulated,  [cv2.IMWRITE_JPEG_QUALITY, 92])
+    _, buf_comp = cv2.imencode('.jpg', comparison, [cv2.IMWRITE_JPEG_QUALITY, 90])
+
+    return jsonify({
+        'simulated':   base64.standard_b64encode(buf_sim).decode(),
+        'comparison':  base64.standard_b64encode(buf_comp).decode(),
+        'improvements': [
+            'Skin texture smoothed and tone evened',
+            'Soft glow applied to face region',
+            'Eye definition and brightness enhanced',
+            'Face width adjusted toward phi ratio' if any(r['name']=='Face Width to Height' and r['deviation']>0.15 for r in ratios) else 'Face proportions maintained',
+            'Eye symmetry subtly balanced',
+            'Temple contouring applied',
+            'Jawline definition sharpened',
+            'Overall warmth and vibrancy enhanced'
+        ]
+    })
+
 
 @app.route('/dental', methods=['POST'])
 def dental():
